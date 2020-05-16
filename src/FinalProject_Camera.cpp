@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
+#include <deque>
 #include <cmath>
 #include <limits>
 #include <opencv2/core.hpp>
@@ -104,7 +105,7 @@ int main(int argc, const char *argv[])
     // misc
     double sensorFrameRate = 10.0 / imgStepWidth; // frames per second for Lidar and camera
     int dataBufferSize = 2;                       // no. of images which are held in memory (ring buffer) at the same time
-    vector<DataFrame> dataBuffer;                 // list of data frames which are held in memory at the same time
+    deque<DataFrame> dataBuffer;                  // list of data frames which are held in memory at the same time
     bool bVis = false;                            // visualize results
 
     /* MAIN LOOP OVER ALL IMAGES */
@@ -120,6 +121,11 @@ int main(int argc, const char *argv[])
 
         // load image from file
         cv::Mat img = cv::imread(imgFullFilename);
+
+        if (dataBuffer.size() == dataBufferSize)
+        {
+            dataBuffer.pop_front();
+        }
 
         // push image into data frame buffer
         DataFrame frame;
