@@ -132,7 +132,43 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+    // assert(kptsPrev.size() == kptsCurr.size());
+
+    int distanceCount = 0;
+    float distanceMean = 0.0;
+    float distanceThreshold = 0.1;
+
+    for (cv::DMatch match : kptMatches)
+    {
+        cv::KeyPoint previousKeypt = kptsPrev.at(match.queryIdx);
+        cv::KeyPoint currentKeypt = kptsCurr.at(match.trainIdx);
+
+        if (boundingBox.roi.contains(currentKeypt.pt))
+        {
+            distanceMean += cv::norm(currentKeypt.pt - previousKeypt.pt);
+            distanceCount++;
+        }
+    }
+
+    distanceMean /= distanceCount;
+
+    for (cv::DMatch match : kptMatches)
+    {
+        cv::KeyPoint previousKeypt = kptsPrev.at(match.queryIdx);
+        cv::KeyPoint currentKeypt = kptsCurr.at(match.trainIdx);
+
+        if (boundingBox.roi.contains(currentKeypt.pt))
+        {
+            float distance = cv::norm(currentKeypt.pt - previousKeypt.pt);
+
+            if (abs(distance - distanceMean) < distanceThreshold)
+            {
+                boundingBox.kptMatches.push_back(match);
+                boundingBox.keypoints.push_back(currentKeypt);
+            }
+        }
+    }
+}
 }
 
 // Compute time-to-collision (TTC) based on keypoint correspondences in successive images
