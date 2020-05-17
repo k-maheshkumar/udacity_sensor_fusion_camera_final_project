@@ -169,13 +169,62 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
         }
     }
 }
+
+double calcMedian(vector<double> &distRatios)
+{
+    std::sort(distRatios.begin(), distRatios.end());
+
+    int middleIndex = distRatios.size() / 2;
+
+    double median = distRatios.size() % 2 ? distRatios[middleIndex] : (distRatios[middleIndex] + distRatios[middleIndex + 1]) / 2;
+
+    return median;
 }
 
 // Compute time-to-collision (TTC) based on keypoint correspondences in successive images
 void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr,
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
-    // ...
+    double minDist = 1.0; // min. required distance
+
+    // compute distance ratios between all matched keypoints
+    vector<double> distRatios; // stores the distance ratios for all keypoints between curr. and prev. frame
+    for (cv::DMatch outerMatch : kptMatches)
+    {
+        cv::KeyPoint kpOuterCurr = kptsCurr.at(outerMatch.trainIdx);
+        cv::KeyPoint kpOuterPrev = kptsPrev.at(outerMatch.queryIdx);
+
+        for (cv::DMatch innerMatch : kptMatches)
+        {
+            // get next keypoint and its matched partner in the prev. frame
+            cv::KeyPoint kpInnerCurr = kptsCurr.at(innerMatch.trainIdx);
+            cv::KeyPoint kpInnerPrev = kptsPrev.at(innerMatch.queryIdx);
+
+            // compute distances and distance ratios
+            double distCurr = cv::norm(kpOuterCurr.pt - kpInnerCurr.pt);
+            double distPrev = cv::norm(kpOuterPrev.pt - kpInnerPrev.pt);
+
+            // avoid division by zero
+            if (distPrev > std::numeric_limits<double>::epsilon() && distCurr >= minDist)
+            {
+
+                double distRatio = distCurr / distPrev;
+                distRatios.push_back(distRatio);
+            }
+        }
+    }
+
+    // only continue if list of distance ratios is not empty
+    if (distRatios.size() == 0)
+    {
+        TTC = NAN;
+        return;
+    }
+
+    double medianDistRatio = calcMedian(distRatios);
+
+    double dT = 1 / frameRate;
+    TTC = -dT / (1 - medianDistRatio);
 }
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
