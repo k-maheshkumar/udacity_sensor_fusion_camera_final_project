@@ -150,5 +150,66 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    vector<vector<int>> matchCount(prevFrame.boundingBoxes.size(), vector<int>(currFrame.boundingBoxes.size(), 0));
+    double shrinkFactor = 0.10;
+
+    for (cv::DMatch match : matches)
+    {
+        cv::KeyPoint previousKeypt = prevFrame.keypoints.at(match.queryIdx);
+        cv::KeyPoint currentKeypt = currFrame.keypoints.at(match.trainIdx);
+
+        int prevBoxIndex = 0;
+        int currBoxIndex = 0;
+
+        vector<int> prevBbIndices;
+        vector<int> currBbIndices;
+
+        for (BoundingBox bbox : prevFrame.boundingBoxes)
+        {
+            if (bbox.roi.contains(previousKeypt.pt))
+            {
+                prevBbIndices.push_back(prevBoxIndex);
+            }
+
+            prevBoxIndex++;
+        }
+
+        for (BoundingBox bbox : currFrame.boundingBoxes)
+        {
+            if (bbox.roi.contains(currentKeypt.pt))
+            {
+                currBbIndices.push_back(currBoxIndex);
+            }
+
+            currBoxIndex++;
+        }
+
+        if (prevBbIndices.size() && currBbIndices.size())
+        {
+            for (int prevIndx : prevBbIndices)
+            {
+                for (int currIndx : currBbIndices)
+                {
+                    matchCount[prevIndx][currIndx] += 1;
+                }
+            }
+        }
+    }
+
+    for (int prevIndx = 0; prevIndx < prevFrame.boundingBoxes.size(); prevIndx++)
+    {
+        int bestMatchIndex = 0;
+        int maxScore = 0;
+
+        for (int currIndx = 0; currIndx < currFrame.boundingBoxes.size(); currIndx++)
+        {
+            if (maxScore < matchCount[prevIndx][currIndx])
+            {
+                maxScore = matchCount[prevIndx][currIndx];
+                bestMatchIndex = currIndx;
+            }
+        }
+
+        bbBestMatches[prevIndx] = bestMatchIndex;
+    }
 }
