@@ -145,7 +145,42 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+    TTC = 0;
+    double dT = 1 / frameRate; // time between two measurements in seconds
+    int minX = 0, maxX = 10;
+    double laneWidth = 4.0; // assumed width of the ego lane
+
+    // find avergae closest distance to Lidar points within ego lane
+    double avgXPrev = 0, avgXCurr = 0;
+    double avgXPrevCount = 0, avgXCurrCount = 0;
+
+    for (auto lidarPoint : lidarPointsPrev)
+    {
+
+        if (lidarPoint.x > minX && lidarPoint.x < maxX && fabs(lidarPoint.y) <= laneWidth / 2)
+        {
+            avgXPrev += lidarPoint.x;
+            avgXPrevCount += 1;
+        }
+    }
+
+    for (auto lidarPoint : lidarPointsCurr)
+    {
+
+        if (lidarPoint.x > minX && lidarPoint.x < maxX && fabs(lidarPoint.y) <= laneWidth / 2)
+        {
+            avgXCurr += lidarPoint.x;
+            avgXCurrCount += 1;
+        }
+    }
+
+    if (avgXPrevCount && avgXCurrCount)
+    {
+        avgXPrev /= avgXPrevCount;
+        avgXCurr /= avgXCurrCount;
+
+        TTC = avgXCurr * dT / (avgXPrev - avgXCurr);
+    }
 }
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
