@@ -164,8 +164,8 @@ int main(int argc, const char *argv[])
         float shrinkFactor = 0.10; // shrinks each bounding box by the given percentage to avoid 3D object merging at the edges of an ROI
         clusterLidarWithROI((dataBuffer.end() - 1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
-        // Visualize 3D objects
         bVis = true;
+        // Visualize 3D objects
         if (bVis)
         {
             show3DObjects((dataBuffer.end() - 1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
@@ -182,7 +182,7 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "ORB";    // HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
+        string detectorType = "AKAZE";  // HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
 
         if (detectorType.compare("SHITOMASI") == 0)
         {
@@ -219,7 +219,7 @@ int main(int argc, const char *argv[])
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        string descriptorType = "BRIEF"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+        string descriptorType = "AKAZE"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
@@ -245,6 +245,22 @@ int main(int argc, const char *argv[])
             (dataBuffer.end() - 1)->kptMatches = matches;
 
             cout << "#7 : MATCH KEYPOINT DESCRIPTORS done" << endl;
+
+            if (bVis)
+            {
+                cv::Mat matchImg = ((dataBuffer.end() - 1)->cameraImg).clone();
+                cv::drawMatches((dataBuffer.end() - 2)->cameraImg, (dataBuffer.end() - 2)->keypoints,
+                                (dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->keypoints,
+                                matches, matchImg,
+                                cv::Scalar::all(-1), cv::Scalar::all(-1),
+                                vector<char>(), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+                string windowName = "Matching keypoints between two camera images";
+                cv::namedWindow(windowName, 7);
+                cv::imshow(windowName, matchImg);
+                cout << "Press key to continue to next image" << endl;
+                cv::waitKey(0); // wait for key to be pressed
+            }
 
             /* TRACK 3D OBJECT BOUNDING BOXES */
 
@@ -294,7 +310,7 @@ int main(int argc, const char *argv[])
                     //// STUDENT ASSIGNMENT
                     //// TASK FP.3 -> assign enclosed keypoint matches to bounding box (implement -> clusterKptMatchesWithROI)
                     //// TASK FP.4 -> compute time-to-collision based on camera (implement -> computeTTCCamera)
-                    double ttcCamera;
+                    double ttcCamera = 0;
                     clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);
                     computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
                     //// EOF STUDENT ASSIGNMENT
